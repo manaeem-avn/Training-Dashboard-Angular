@@ -1,0 +1,139 @@
+<h2 class="page-title">Tasks</h2>
+<p class="page-subtitle">Every task across the portal, with search, filters, sorting and paging.</p>
+
+<div class="toolbar">
+  <input type="search" placeholder="Search title or description"
+         (input)="onSearch($any($event.target).value)" />
+
+  <select (change)="filter('projectId', $any($event.target).value)">
+    <option value="">All projects</option>
+    <option *ngFor="let project of projectOptions()" [value]="project.id">{{ project.name }}</option>
+  </select>
+
+  <select (change)="filter('status', $any($event.target).value)">
+    <option value="">All statuses</option>
+    <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+  </select>
+
+  <select (change)="filter('priority', $any($event.target).value)">
+    <option value="">All priorities</option>
+    <option *ngFor="let priority of priorities" [value]="priority">{{ priority }}</option>
+  </select>
+
+  <span class="spacer"></span>
+
+  <button type="button" class="btn" (click)="openCreate()">New task</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="sortable" (click)="sort('title')">Title{{ sortIcon('title') }}</th>
+        <th>Project</th>
+        <th class="sortable" (click)="sort('status')">Status{{ sortIcon('status') }}</th>
+        <th class="sortable" (click)="sort('priority')">Priority{{ sortIcon('priority') }}</th>
+        <th>Assignee</th>
+        <th class="sortable" (click)="sort('dueDate')">Due{{ sortIcon('dueDate') }}</th>
+        <th>Activity</th>
+        <th></th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngIf="loading()">
+        <td colspan="8" class="empty"><div class="spinner"></div>Loading...</td>
+      </tr>
+
+      <tr *ngFor="let task of result()?.items" [hidden]="loading()">
+        <td>
+          <a [routerLink]="['/tasks', task.id]"><strong>{{ task.title }}</strong></a>
+          <div class="muted">{{ task.description }}</div>
+        </td>
+        <td>{{ task.projectName }}</td>
+        <td><span [class]="'badge ' + statusBadge(task.status)">{{ task.status }}</span></td>
+        <td><span [class]="'badge ' + priorityBadge(task.priority)">{{ task.priority }}</span></td>
+        <td>{{ task.assigneeName ?? 'Unassigned' }}</td>
+        <td>
+          <span [class.overdue]="isOverdue(task)">
+            {{ task.dueDate ? (task.dueDate | date: 'dd MMM yyyy') : '—' }}
+          </span>
+        </td>
+        <td class="muted">{{ task.commentCount }} comments · {{ task.attachmentCount }} files</td>
+        <td>
+          <div class="row-actions">
+            <a class="btn-link" [routerLink]="['/tasks', task.id]">Open</a>
+            <button type="button" class="btn-link" (click)="openEdit(task)">Edit</button>
+            <button type="button" class="btn-link danger" *ngIf="auth.isAdmin()" (click)="remove(task)">Delete</button>
+          </div>
+        </td>
+      </tr>
+
+      <tr *ngIf="!loading() && result() && result()!.items.length === 0">
+        <td colspan="8" class="empty">No tasks matched your filters.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <app-paginator [page]="result()" label="tasks"
+                 (pageChange)="goToPage($event)" (sizeChange)="changeSize($event)" />
+</div>
+
+<app-modal [open]="modalOpen()" [title]="editingId() ? 'Edit task' : 'New task'"
+           (close)="modalOpen.set(false)">
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" type="text" formControlName="title" />
+      <small class="error" *ngIf="invalid('title')">A title of at least 3 characters is required.</small>
+    </div>
+
+    <div class="field">
+      <label for="taskDescription">Description</label>
+      <textarea id="taskDescription" rows="3" formControlName="description"></textarea>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="taskProject">Project</label>
+        <select id="taskProject" formControlName="projectId">
+          <option [ngValue]="null" disabled>Select a project</option>
+          <option *ngFor="let project of projectOptions()" [ngValue]="project.id">{{ project.name }}</option>
+        </select>
+        <small class="error" *ngIf="invalid('projectId')">A project is required.</small>
+      </div>
+
+      <div class="field">
+        <label for="taskAssignee">Assignee</label>
+        <select id="taskAssignee" formControlName="assigneeId">
+          <option [ngValue]="null">Unassigned</option>
+          <option *ngFor="let user of userOptions()" [ngValue]="user.id">{{ user.fullName }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="taskStatus">Status</label>
+        <select id="taskStatus" formControlName="status">
+          <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="taskPriority">Priority</label>
+        <select id="taskPriority" formControlName="priority">
+          <option *ngFor="let priority of priorities" [value]="priority">{{ priority }}</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="taskDue">Due date</label>
+        <input id="taskDue" type="date" formControlName="dueDate" />
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn btn-secondary" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save' }}</button>
+    </div>
+  </form>
+</app-modal>

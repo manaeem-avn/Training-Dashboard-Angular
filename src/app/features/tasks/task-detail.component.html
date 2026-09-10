@@ -1,0 +1,87 @@
+<a class="btn-link" routerLink="/tasks">&larr; Back to tasks</a>
+
+<div class="empty" *ngIf="loading()">
+  <div class="spinner"></div>
+  <p>Loading the task...</p>
+</div>
+
+<ng-container *ngIf="!loading() && task() as item">
+  <h2 class="page-title">{{ item.title }}</h2>
+  <p class="page-subtitle">{{ item.projectName }}</p>
+
+  <div class="detail-grid">
+    <section class="panel">
+      <h3>Details</h3>
+      <p class="description">{{ item.description || 'No description was provided.' }}</p>
+
+      <dl>
+        <div>
+          <dt>Status</dt>
+          <dd><span [class]="'badge ' + statusBadge(item.status)">{{ item.status }}</span></dd>
+        </div>
+        <div>
+          <dt>Priority</dt>
+          <dd><span [class]="'badge ' + priorityBadge(item.priority)">{{ item.priority }}</span></dd>
+        </div>
+        <div><dt>Assignee</dt><dd>{{ item.assigneeName ?? 'Unassigned' }}</dd></div>
+        <div><dt>Due date</dt><dd>{{ item.dueDate ? (item.dueDate | date: 'dd MMM yyyy') : '—' }}</dd></div>
+        <div><dt>Created</dt><dd>{{ item.createdBy }} · {{ item.createdAt | date: 'dd MMM yyyy HH:mm' }}</dd></div>
+        <div *ngIf="item.updatedAt">
+          <dt>Updated</dt><dd>{{ item.updatedBy }} · {{ item.updatedAt | date: 'dd MMM yyyy HH:mm' }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h3>Attachments</h3>
+
+      <label class="upload">
+        <input type="file" (change)="onFileSelected($event)" [disabled]="uploading()" />
+        <span>{{ uploading() ? 'Uploading...' : 'Choose a file' }}</span>
+        <small>pdf, png, jpg, txt, csv, docx or xlsx · up to 5 MB</small>
+      </label>
+
+      <p class="empty" *ngIf="!attachments().length">No files have been attached yet.</p>
+
+      <ul class="files">
+        <li *ngFor="let file of attachments()">
+          <div class="file-meta">
+            <strong>{{ file.fileName }}</strong>
+            <small>{{ size(file.sizeBytes) }} · {{ file.uploadedBy }} · {{ file.createdAt | date: 'dd MMM yyyy' }}</small>
+          </div>
+          <button type="button" class="btn-link" (click)="download(file)">Download</button>
+          <button type="button" class="btn-link danger" (click)="deleteAttachment(file)">Delete</button>
+        </li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h3>Comments</h3>
+
+    <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="comment-form" novalidate>
+      <textarea rows="2" formControlName="text" placeholder="Write a comment..."></textarea>
+      <button type="submit" class="btn" [disabled]="posting()">{{ posting() ? 'Posting...' : 'Post' }}</button>
+    </form>
+    <small class="error" *ngIf="commentForm.controls.text.invalid && commentForm.controls.text.touched">
+      A comment cannot be empty.
+    </small>
+
+    <p class="empty" *ngIf="!comments().length">No comments yet. Be the first to add one.</p>
+
+    <ul class="comments">
+      <li *ngFor="let comment of comments()">
+        <span class="avatar">{{ initials(comment.authorName) }}</span>
+        <div class="comment-body">
+          <div class="comment-head">
+            <strong>{{ comment.authorName }}</strong>
+            <small>{{ comment.createdAt | date: 'dd MMM yyyy HH:mm' }}</small>
+          </div>
+          <p>{{ comment.text }}</p>
+        </div>
+        <button type="button" class="btn-link danger" *ngIf="canDelete(comment)"
+                (click)="deleteComment(comment)">Delete</button>
+      </li>
+    </ul>
+  </section>
+</ng-container>
