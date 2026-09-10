@@ -1,0 +1,24 @@
+.message-page {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.message-page i {
+  font-size: 3rem;
+  color: var(--wp-accent);
+  margin-bottom: 0.5rem;
+}
+
+.message-page h2 {
+  margin: 0;
+}
+
+.message-page p {
+  margin: 0 0 1rem;
+  color: var(--wp-muted);
+}

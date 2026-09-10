@@ -1,0 +1,50 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-brand">
+      <i class="pi pi-th-large"></i>
+      <div>
+        <h1>Work Portal</h1>
+        <p>Enterprise Work Management</p>
+      </div>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" pInputText type="email" formControlName="email" autocomplete="username" />
+        <small class="p-error" *ngIf="invalid('email')">
+          {{ form.controls.email.hasError('required') ? 'Email is required.' : 'Enter a valid email address.' }}
+        </small>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <p-password
+          inputId="password"
+          formControlName="password"
+          [feedback]="false"
+          [toggleMask]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full" />
+        <small class="p-error" *ngIf="invalid('password')">
+          {{ form.controls.password.hasError('required') ? 'Password is required.' : 'Password must be at least 6 characters.' }}
+        </small>
+      </div>
+
+      <p-message severity="danger" [text]="error()" *ngIf="error()" styleClass="w-full" />
+
+      <p-button
+        type="submit"
+        label="Sign in"
+        icon="pi pi-sign-in"
+        styleClass="w-full"
+        [loading]="loading()" />
+    </form>
+
+    <div class="demo">
+      <span>Demo accounts</span>
+      <button type="button" (click)="useDemo('admin@workportal.com', 'Admin123!')">Admin</button>
+      <button type="button" (click)="useDemo('alex@workportal.com', 'User1234!')">User</button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,82 @@
+<p-button label="Back to tasks" icon="pi pi-arrow-left" [text]="true" severity="secondary" routerLink="/tasks" />
+
+<div class="empty" *ngIf="loading()">
+  <p-progressSpinner strokeWidth="4" />
+  <p>Loading the task...</p>
+</div>
+
+<ng-container *ngIf="!loading() && task() as item">
+  <h2 class="page-title">{{ item.title }}</h2>
+  <p class="page-subtitle">{{ item.projectName }}</p>
+
+  <div class="detail-grid">
+    <section class="panel">
+      <h3>Details</h3>
+      <p class="description">{{ item.description || 'No description was provided.' }}</p>
+
+      <dl>
+        <div><dt>Status</dt><dd><p-tag [value]="item.status" [severity]="statusSeverity(item.status)" /></dd></div>
+        <div><dt>Priority</dt><dd><p-tag [value]="item.priority" [severity]="prioritySeverity(item.priority)" /></dd></div>
+        <div><dt>Assignee</dt><dd>{{ item.assigneeName ?? 'Unassigned' }}</dd></div>
+        <div><dt>Due date</dt><dd>{{ item.dueDate ? (item.dueDate | date: 'dd MMM yyyy') : '—' }}</dd></div>
+        <div><dt>Created</dt><dd>{{ item.createdBy }} · {{ item.createdAt | date: 'dd MMM yyyy HH:mm' }}</dd></div>
+        <div *ngIf="item.updatedAt"><dt>Updated</dt><dd>{{ item.updatedBy }} · {{ item.updatedAt | date: 'dd MMM yyyy HH:mm' }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel">
+      <h3>Attachments</h3>
+
+      <label class="upload">
+        <input type="file" (change)="onFileSelected($event)" [disabled]="uploading()" />
+        <span><i class="pi pi-upload"></i> {{ uploading() ? 'Uploading...' : 'Choose a file' }}</span>
+        <small>pdf, png, jpg, txt, csv, docx or xlsx · up to 5 MB</small>
+      </label>
+
+      <p class="empty" *ngIf="!attachments().length">No files have been attached yet.</p>
+
+      <ul class="files">
+        <li *ngFor="let file of attachments()">
+          <i class="pi pi-file"></i>
+          <div class="file-meta">
+            <strong>{{ file.fileName }}</strong>
+            <small>{{ size(file.sizeBytes) }} · {{ file.uploadedBy }} · {{ file.createdAt | date: 'dd MMM yyyy' }}</small>
+          </div>
+          <p-button icon="pi pi-download" [text]="true" severity="secondary" (onClick)="download(file)" ariaLabel="Download" />
+          <p-button icon="pi pi-trash" [text]="true" severity="danger" (onClick)="deleteAttachment(file)" ariaLabel="Delete" />
+        </li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h3>Comments</h3>
+
+    <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="comment-form" novalidate>
+      <textarea pInputTextarea formControlName="text" rows="2" placeholder="Write a comment..."></textarea>
+      <p-button type="submit" label="Post" icon="pi pi-send" [loading]="posting()" />
+    </form>
+    <small class="p-error" *ngIf="commentForm.controls.text.invalid && commentForm.controls.text.touched">
+      A comment cannot be empty.
+    </small>
+
+    <p class="empty" *ngIf="!comments().length">No comments yet. Be the first to add one.</p>
+
+    <ul class="comments">
+      <li *ngFor="let comment of comments()">
+        <span class="avatar">{{ initials(comment.authorName) }}</span>
+        <div class="comment-body">
+          <div class="comment-head">
+            <strong>{{ comment.authorName }}</strong>
+            <small>{{ comment.createdAt | date: 'dd MMM yyyy HH:mm' }}</small>
+          </div>
+          <p>{{ comment.text }}</p>
+        </div>
+        <p-button
+          *ngIf="canDelete(comment)"
+          icon="pi pi-trash" [text]="true" severity="danger"
+          (onClick)="deleteComment(comment)" ariaLabel="Delete comment" />
+      </li>
+    </ul>
+  </section>
+</ng-container>

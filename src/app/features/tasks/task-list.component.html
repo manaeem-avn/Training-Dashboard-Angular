@@ -1,0 +1,146 @@
+<h2 class="page-title">Tasks</h2>
+<p class="page-subtitle">Every task across the portal, with search, filters, sorting and paging.</p>
+
+<div class="toolbar">
+  <span class="p-input-icon-left">
+    <i class="pi pi-search"></i>
+    <input pInputText type="text" placeholder="Search title or description" (input)="onSearch($any($event.target).value)" />
+  </span>
+
+  <p-dropdown
+    [options]="projectOptions()" optionLabel="name" optionValue="id"
+    placeholder="All projects" [showClear]="true"
+    (onChange)="filter('projectId', $event.value)" (onClear)="filter('projectId', null)" />
+
+  <p-dropdown
+    [options]="statuses" placeholder="All statuses" [showClear]="true"
+    (onChange)="filter('status', $event.value)" (onClear)="filter('status', null)" />
+
+  <p-dropdown
+    [options]="priorities" placeholder="All priorities" [showClear]="true"
+    (onChange)="filter('priority', $event.value)" (onClear)="filter('priority', null)" />
+
+  <span class="spacer"></span>
+
+  <p-button label="New task" icon="pi pi-plus" (onClick)="openCreate()" />
+</div>
+
+<p-table
+  [value]="rows()"
+  [lazy]="true"
+  (onLazyLoad)="onLazyLoad($event)"
+  [paginator]="true"
+  [rows]="10"
+  [rowsPerPageOptions]="[5, 10, 25]"
+  [totalRecords]="total()"
+  [loading]="loading()"
+  dataKey="id"
+  styleClass="p-datatable-sm p-datatable-gridlines"
+  currentPageReportTemplate="Showing {first} to {last} of {totalRecords} tasks"
+  [showCurrentPageReport]="true">
+
+  <ng-template pTemplate="header">
+    <tr>
+      <th pSortableColumn="title" style="min-width: 220px">Title <p-sortIcon field="title" /></th>
+      <th style="width: 170px">Project</th>
+      <th pSortableColumn="status" style="width: 130px">Status <p-sortIcon field="status" /></th>
+      <th pSortableColumn="priority" style="width: 110px">Priority <p-sortIcon field="priority" /></th>
+      <th style="width: 150px">Assignee</th>
+      <th pSortableColumn="dueDate" style="width: 130px">Due <p-sortIcon field="dueDate" /></th>
+      <th style="width: 110px">Activity</th>
+      <th style="width: 140px"></th>
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="body" let-task>
+    <tr>
+      <td>
+        <a [routerLink]="['/tasks', task.id]"><strong>{{ task.title }}</strong></a>
+        <div class="muted">{{ task.description }}</div>
+      </td>
+      <td>{{ task.projectName }}</td>
+      <td><p-tag [value]="task.status" [severity]="statusSeverity(task.status)" /></td>
+      <td><p-tag [value]="task.priority" [severity]="prioritySeverity(task.priority)" /></td>
+      <td>{{ task.assigneeName ?? 'Unassigned' }}</td>
+      <td>
+        <span [class.overdue]="isOverdue(task)">
+          {{ task.dueDate ? (task.dueDate | date: 'dd MMM yyyy') : '—' }}
+        </span>
+      </td>
+      <td class="muted">
+        <i class="pi pi-comment"></i> {{ task.commentCount }}
+        &nbsp;<i class="pi pi-paperclip"></i> {{ task.attachmentCount }}
+      </td>
+      <td>
+        <div class="row-actions">
+          <p-button icon="pi pi-eye" [text]="true" severity="secondary" [routerLink]="['/tasks', task.id]" ariaLabel="Open" />
+          <p-button icon="pi pi-pencil" [text]="true" severity="secondary" (onClick)="openEdit(task)" ariaLabel="Edit" />
+          <p-button *ngIf="auth.isAdmin()" icon="pi pi-trash" [text]="true" severity="danger" (onClick)="remove(task)" ariaLabel="Delete" />
+        </div>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template pTemplate="emptymessage">
+    <tr><td colspan="8" class="empty">No tasks matched your filters.</td></tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [header]="editingId() ? 'Edit task' : 'New task'"
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [modal]="true"
+  [style]="{ width: '560px' }"
+  [draggable]="false">
+
+  <form [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label for="title">Title</label>
+      <input id="title" pInputText formControlName="title" />
+      <small class="p-error" *ngIf="invalid('title')">A title of at least 3 characters is required.</small>
+    </div>
+
+    <div class="field">
+      <label for="taskDescription">Description</label>
+      <textarea id="taskDescription" pInputTextarea formControlName="description" rows="3"></textarea>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="taskProject">Project</label>
+        <p-dropdown
+          inputId="taskProject" [options]="projectOptions()" optionLabel="name" optionValue="id"
+          formControlName="projectId" placeholder="Select a project" appendTo="body" />
+        <small class="p-error" *ngIf="invalid('projectId')">A project is required.</small>
+      </div>
+
+      <div class="field">
+        <label for="taskAssignee">Assignee</label>
+        <p-dropdown
+          inputId="taskAssignee" [options]="userOptions()" optionLabel="fullName" optionValue="id"
+          formControlName="assigneeId" placeholder="Unassigned" [showClear]="true" appendTo="body" />
+      </div>
+
+      <div class="field">
+        <label for="taskStatus">Status</label>
+        <p-dropdown inputId="taskStatus" [options]="statuses" formControlName="status" appendTo="body" />
+      </div>
+
+      <div class="field">
+        <label for="taskPriority">Priority</label>
+        <p-dropdown inputId="taskPriority" [options]="priorities" formControlName="priority" appendTo="body" />
+      </div>
+
+      <div class="field">
+        <label for="taskDue">Due date</label>
+        <p-calendar inputId="taskDue" formControlName="dueDate" dateFormat="dd M yy" [showClear]="true" appendTo="body" />
+      </div>
+    </div>
+
+    <div class="dialog-actions">
+      <p-button type="button" label="Cancel" severity="secondary" [text]="true" (onClick)="dialogVisible.set(false)" />
+      <p-button type="submit" label="Save" icon="pi pi-check" [loading]="saving()" />
+    </div>
+  </form>
+</p-dialog>

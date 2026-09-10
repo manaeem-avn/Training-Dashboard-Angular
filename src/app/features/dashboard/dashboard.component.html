@@ -1,0 +1,44 @@
+<h2 class="page-title">Dashboard</h2>
+<p class="page-subtitle">A live summary of projects, tasks and workload.</p>
+
+<div class="empty" *ngIf="loading()">
+  <p-progressSpinner styleClass="spinner" strokeWidth="4" />
+  <p>Loading the summary...</p>
+</div>
+
+<ng-container *ngIf="!loading() && summary() as data">
+  <div class="cards">
+    <div class="card" *ngFor="let card of cards()" [attr.data-tone]="card.tone">
+      <div class="card-icon"><i [class]="card.icon"></i></div>
+      <div>
+        <div class="card-value">{{ card.value }}</div>
+        <div class="card-label">{{ card.label }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <section class="panel">
+      <h3>Tasks by status</h3>
+      <p-chart type="doughnut" [data]="statusChart()" [options]="chartOptions" height="280px" />
+    </section>
+
+    <section class="panel">
+      <h3>Tasks per project</h3>
+      <p-chart type="bar" [data]="projectChart()" [options]="barOptions" height="280px" />
+    </section>
+  </div>
+
+  <section class="panel">
+    <h3>Tasks by priority</h3>
+    <div class="priority-rows">
+      <div class="priority-row" *ngFor="let point of data.tasksByPriority">
+        <span class="priority-label">{{ point.label }}</span>
+        <div class="bar">
+          <span [style.width.%]="data.totalTasks ? (point.value / data.totalTasks) * 100 : 0"></span>
+        </div>
+        <span class="priority-value">{{ point.value }}</span>
+      </div>
+    </div>
+  </section>
+</ng-container>
