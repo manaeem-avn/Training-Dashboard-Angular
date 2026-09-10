@@ -2,8 +2,8 @@ import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 
 export function dateRangeValidator(startName: string, endName: string): ValidatorFn {
   return (group: AbstractControl): ValidationErrors | null => {
-    const start = group.get(startName)?.value as Date | null;
-    const end = group.get(endName)?.value as Date | null;
+    const start = group.get(startName)?.value as string;
+    const end = group.get(endName)?.value as string;
 
     if (start && end && end < start) return { dateRange: true };
     return null;

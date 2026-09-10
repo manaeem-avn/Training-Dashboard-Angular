@@ -1,56 +1,42 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ConfirmationService, MessageService } from 'primeng/api';
-import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
-import { DialogModule } from 'primeng/dialog';
-import { DropdownModule } from 'primeng/dropdown';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
-import { TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { PagedResult } from '../../core/models/api.models';
 import { AppUser } from '../../core/models/auth.models';
 import { Project, ProjectQuery } from '../../core/models/project.models';
 import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
 import { UserService } from '../../core/services/user.service';
-import { dateRangeValidator, toIsoDate } from '../shared/form-helpers';
+import { ModalComponent } from '../../shared/modal.component';
+import { PaginatorComponent } from '../../shared/paginator.component';
+import { ToastService } from '../../shared/toast.service';
+import { dateRangeValidator, toIsoDate } from '../../shared/form-helpers';
 
 @Component({
   selector: 'app-project-list',
   standalone: true,
-  imports: [
-    CommonModule, ReactiveFormsModule, TableModule, ButtonModule, DialogModule,
-    InputTextModule, InputTextareaModule, DropdownModule, CalendarModule, TagModule
-  ],
+  imports: [CommonModule, ReactiveFormsModule, ModalComponent, PaginatorComponent],
   templateUrl: './project-list.component.html'
 })
 export class ProjectListComponent implements OnInit, OnDestroy {
   private service = inject(ProjectService);
   private users = inject(UserService);
   private fb = inject(FormBuilder);
-  private messages = inject(MessageService);
-  private confirm = inject(ConfirmationService);
+  private toasts = inject(ToastService);
   auth = inject(AuthService);
 
   private destroy = new Subject<void>();
   private searchChanged = new Subject<string>();
 
-  rows = signal<Project[]>([]);
-  total = signal(0);
+  result = signal<PagedResult<Project> | null>(null);
   loading = signal(false);
   saving = signal(false);
-  dialogVisible = signal(false);
+  modalOpen = signal(false);
   editingId = signal<number | null>(null);
   owners = signal<AppUser[]>([]);
 
-  statuses = [
-    { label: 'Active', value: 'Active' },
-    { label: 'On hold', value: 'OnHold' },
-    { label: 'Completed', value: 'Completed' }
-  ];
+  statuses = ['Active', 'OnHold', 'Completed'];
 
   query: ProjectQuery = { page: 1, pageSize: 10, sortBy: 'id', desc: false, search: '', status: null };
 
@@ -58,8 +44,8 @@ export class ProjectListComponent implements OnInit, OnDestroy {
     name: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(120)]],
     description: ['', [Validators.maxLength(1000)]],
     status: ['Active', [Validators.required]],
-    startDate: [new Date() as Date | null, [Validators.required]],
-    endDate: [null as Date | null],
+    startDate: ['', [Validators.required]],
+    endDate: [''],
     ownerId: [null as number | null, [Validators.required]]
   }, { validators: dateRangeValidator('startDate', 'endDate') });
 
@@ -70,6 +56,8 @@ export class ProjectListComponent implements OnInit, OnDestroy {
       this.query = { ...this.query, search: term, page: 1 };
       this.load();
     });
+
+    this.load();
   }
 
   ngOnDestroy(): void {
@@ -77,24 +65,33 @@ export class ProjectListComponent implements OnInit, OnDestroy {
     this.destroy.complete();
   }
 
-  onLazyLoad(event: TableLazyLoadEvent): void {
-    const size = event.rows ?? 10;
-    this.query = {
-      ...this.query,
-      page: Math.floor((event.first ?? 0) / size) + 1,
-      pageSize: size,
-      sortBy: (event.sortField as string) ?? 'id',
-      desc: event.sortOrder === -1
-    };
-    this.load();
-  }
-
   onSearch(term: string): void {
     this.searchChanged.next(term);
   }
 
-  onStatusFilter(status: string | null): void {
-    this.query = { ...this.query, status, page: 1 };
+  filterStatus(status: string): void {
+    this.query = { ...this.query, status: status || null, page: 1 };
+    this.load();
+  }
+
+  sort(column: string): void {
+    const desc = this.query.sortBy === column ? !this.query.desc : false;
+    this.query = { ...this.query, sortBy: column, desc, page: 1 };
+    this.load();
+  }
+
+  sortIcon(column: string): string {
+    if (this.query.sortBy !== column) return '';
+    return this.query.desc ? ' ▼' : ' ▲';
+  }
+
+  goToPage(page: number): void {
+    this.query = { ...this.query, page };
+    this.load();
+  }
+
+  changeSize(pageSize: number): void {
+    this.query = { ...this.query, pageSize, page: 1 };
     this.load();
   }
 
@@ -102,8 +99,7 @@ export class ProjectListComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.service.search(this.query).subscribe({
       next: (result) => {
-        this.rows.set(result.items);
-        this.total.set(result.totalItems);
+        this.result.set(result);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -114,9 +110,9 @@ export class ProjectListComponent implements OnInit, OnDestroy {
     this.editingId.set(null);
     this.form.reset({
       name: '', description: '', status: 'Active',
-      startDate: new Date(), endDate: null, ownerId: null
+      startDate: toIsoDate(new Date())!, endDate: '', ownerId: null
     });
-    this.dialogVisible.set(true);
+    this.modalOpen.set(true);
   }
 
   openEdit(project: Project): void {
@@ -125,11 +121,11 @@ export class ProjectListComponent implements OnInit, OnDestroy {
       name: project.name,
       description: project.description,
       status: project.status,
-      startDate: new Date(project.startDate),
-      endDate: project.endDate ? new Date(project.endDate) : null,
+      startDate: project.startDate.substring(0, 10),
+      endDate: project.endDate ? project.endDate.substring(0, 10) : '',
       ownerId: project.ownerId
     });
-    this.dialogVisible.set(true);
+    this.modalOpen.set(true);
   }
 
   invalid(name: string): boolean {
@@ -148,9 +144,9 @@ export class ProjectListComponent implements OnInit, OnDestroy {
       name: value.name,
       description: value.description,
       status: value.status,
-      startDate: toIsoDate(value.startDate)!,
-      endDate: toIsoDate(value.endDate),
-      ownerId: value.ownerId!
+      startDate: value.startDate,
+      endDate: value.endDate || null,
+      ownerId: Number(value.ownerId)
     };
 
     this.saving.set(true);
@@ -160,12 +156,8 @@ export class ProjectListComponent implements OnInit, OnDestroy {
     request.subscribe({
       next: () => {
         this.saving.set(false);
-        this.dialogVisible.set(false);
-        this.messages.add({
-          severity: 'success',
-          summary: id ? 'Project updated' : 'Project created',
-          detail: payload.name
-        });
+        this.modalOpen.set(false);
+        this.toasts.success(id ? 'Project updated' : 'Project created', payload.name);
         this.load();
       },
       error: () => this.saving.set(false)
@@ -173,21 +165,15 @@ export class ProjectListComponent implements OnInit, OnDestroy {
   }
 
   remove(project: Project): void {
-    this.confirm.confirm({
-      header: 'Delete project',
-      message: `Delete "${project.name}" and all of its tasks?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.service.delete(project.id).subscribe(() => {
-          this.messages.add({ severity: 'success', summary: 'Project deleted', detail: project.name });
-          this.load();
-        });
-      }
+    if (!confirm(`Delete "${project.name}" and all of its tasks?`)) return;
+
+    this.service.delete(project.id).subscribe(() => {
+      this.toasts.success('Project deleted', project.name);
+      this.load();
     });
   }
 
-  severity(status: string): 'success' | 'warning' | 'info' {
+  badge(status: string): string {
     if (status === 'Active') return 'success';
     if (status === 'OnHold') return 'warning';
     return 'info';

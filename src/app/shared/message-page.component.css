@@ -8,17 +8,16 @@
   text-align: center;
 }
 
-.message-page i {
-  font-size: 3rem;
-  color: var(--wp-accent);
-  margin-bottom: 0.5rem;
-}
-
 .message-page h2 {
   margin: 0;
+  font-size: 1.2rem;
 }
 
 .message-page p {
   margin: 0 0 1rem;
-  color: var(--wp-muted);
+  color: var(--muted);
+}
+
+.btn {
+  text-decoration: none;
 }

@@ -1,7 +1,7 @@
-<p-button label="Back to tasks" icon="pi pi-arrow-left" [text]="true" severity="secondary" routerLink="/tasks" />
+<a class="btn-link" routerLink="/tasks">&larr; Back to tasks</a>
 
 <div class="empty" *ngIf="loading()">
-  <p-progressSpinner strokeWidth="4" />
+  <div class="spinner"></div>
   <p>Loading the task...</p>
 </div>
 
@@ -15,12 +15,20 @@
       <p class="description">{{ item.description || 'No description was provided.' }}</p>
 
       <dl>
-        <div><dt>Status</dt><dd><p-tag [value]="item.status" [severity]="statusSeverity(item.status)" /></dd></div>
-        <div><dt>Priority</dt><dd><p-tag [value]="item.priority" [severity]="prioritySeverity(item.priority)" /></dd></div>
+        <div>
+          <dt>Status</dt>
+          <dd><span [class]="'badge ' + statusBadge(item.status)">{{ item.status }}</span></dd>
+        </div>
+        <div>
+          <dt>Priority</dt>
+          <dd><span [class]="'badge ' + priorityBadge(item.priority)">{{ item.priority }}</span></dd>
+        </div>
         <div><dt>Assignee</dt><dd>{{ item.assigneeName ?? 'Unassigned' }}</dd></div>
         <div><dt>Due date</dt><dd>{{ item.dueDate ? (item.dueDate | date: 'dd MMM yyyy') : '—' }}</dd></div>
         <div><dt>Created</dt><dd>{{ item.createdBy }} · {{ item.createdAt | date: 'dd MMM yyyy HH:mm' }}</dd></div>
-        <div *ngIf="item.updatedAt"><dt>Updated</dt><dd>{{ item.updatedBy }} · {{ item.updatedAt | date: 'dd MMM yyyy HH:mm' }}</dd></div>
+        <div *ngIf="item.updatedAt">
+          <dt>Updated</dt><dd>{{ item.updatedBy }} · {{ item.updatedAt | date: 'dd MMM yyyy HH:mm' }}</dd>
+        </div>
       </dl>
     </section>
 
@@ -29,7 +37,7 @@
 
       <label class="upload">
         <input type="file" (change)="onFileSelected($event)" [disabled]="uploading()" />
-        <span><i class="pi pi-upload"></i> {{ uploading() ? 'Uploading...' : 'Choose a file' }}</span>
+        <span>{{ uploading() ? 'Uploading...' : 'Choose a file' }}</span>
         <small>pdf, png, jpg, txt, csv, docx or xlsx · up to 5 MB</small>
       </label>
 
@@ -37,13 +45,12 @@
 
       <ul class="files">
         <li *ngFor="let file of attachments()">
-          <i class="pi pi-file"></i>
           <div class="file-meta">
             <strong>{{ file.fileName }}</strong>
             <small>{{ size(file.sizeBytes) }} · {{ file.uploadedBy }} · {{ file.createdAt | date: 'dd MMM yyyy' }}</small>
           </div>
-          <p-button icon="pi pi-download" [text]="true" severity="secondary" (onClick)="download(file)" ariaLabel="Download" />
-          <p-button icon="pi pi-trash" [text]="true" severity="danger" (onClick)="deleteAttachment(file)" ariaLabel="Delete" />
+          <button type="button" class="btn-link" (click)="download(file)">Download</button>
+          <button type="button" class="btn-link danger" (click)="deleteAttachment(file)">Delete</button>
         </li>
       </ul>
     </section>
@@ -53,10 +60,10 @@
     <h3>Comments</h3>
 
     <form [formGroup]="commentForm" (ngSubmit)="addComment()" class="comment-form" novalidate>
-      <textarea pInputTextarea formControlName="text" rows="2" placeholder="Write a comment..."></textarea>
-      <p-button type="submit" label="Post" icon="pi pi-send" [loading]="posting()" />
+      <textarea rows="2" formControlName="text" placeholder="Write a comment..."></textarea>
+      <button type="submit" class="btn" [disabled]="posting()">{{ posting() ? 'Posting...' : 'Post' }}</button>
     </form>
-    <small class="p-error" *ngIf="commentForm.controls.text.invalid && commentForm.controls.text.touched">
+    <small class="error" *ngIf="commentForm.controls.text.invalid && commentForm.controls.text.touched">
       A comment cannot be empty.
     </small>
 
@@ -72,10 +79,8 @@
           </div>
           <p>{{ comment.text }}</p>
         </div>
-        <p-button
-          *ngIf="canDelete(comment)"
-          icon="pi pi-trash" [text]="true" severity="danger"
-          (onClick)="deleteComment(comment)" ariaLabel="Delete comment" />
+        <button type="button" class="btn-link danger" *ngIf="canDelete(comment)"
+                (click)="deleteComment(comment)">Delete</button>
       </li>
     </ul>
   </section>

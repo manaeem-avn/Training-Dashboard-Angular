@@ -2,141 +2,121 @@
 <p class="page-subtitle">Search, filter and manage the projects in the portal.</p>
 
 <div class="toolbar">
-  <span class="p-input-icon-left">
-    <i class="pi pi-search"></i>
-    <input pInputText type="text" placeholder="Search name or description" (input)="onSearch($any($event.target).value)" />
-  </span>
+  <input type="search" placeholder="Search name or description"
+         (input)="onSearch($any($event.target).value)" />
 
-  <p-dropdown
-    [options]="statuses"
-    placeholder="All statuses"
-    [showClear]="true"
-    (onChange)="onStatusFilter($event.value)"
-    (onClear)="onStatusFilter(null)" />
+  <select (change)="filterStatus($any($event.target).value)">
+    <option value="">All statuses</option>
+    <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+  </select>
 
   <span class="spacer"></span>
 
-  <p-button
-    *ngIf="auth.isAdmin()"
-    label="New project"
-    icon="pi pi-plus"
-    (onClick)="openCreate()" />
+  <button type="button" class="btn" *ngIf="auth.isAdmin()" (click)="openCreate()">New project</button>
 </div>
 
-<p-table
-  [value]="rows()"
-  [lazy]="true"
-  (onLazyLoad)="onLazyLoad($event)"
-  [paginator]="true"
-  [rows]="10"
-  [rowsPerPageOptions]="[5, 10, 25]"
-  [totalRecords]="total()"
-  [loading]="loading()"
-  dataKey="id"
-  styleClass="p-datatable-sm p-datatable-gridlines"
-  currentPageReportTemplate="Showing {first} to {last} of {totalRecords} projects"
-  [showCurrentPageReport]="true">
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="sortable" (click)="sort('name')">Name{{ sortIcon('name') }}</th>
+        <th class="sortable" (click)="sort('status')">Status{{ sortIcon('status') }}</th>
+        <th>Owner</th>
+        <th class="sortable" (click)="sort('startDate')">Start{{ sortIcon('startDate') }}</th>
+        <th>End</th>
+        <th>Tasks</th>
+        <th>Last change</th>
+        <th *ngIf="auth.isAdmin()"></th>
+      </tr>
+    </thead>
 
-  <ng-template pTemplate="header">
-    <tr>
-      <th pSortableColumn="name" style="min-width: 200px">Name <p-sortIcon field="name" /></th>
-      <th pSortableColumn="status" style="width: 130px">Status <p-sortIcon field="status" /></th>
-      <th style="width: 170px">Owner</th>
-      <th pSortableColumn="startDate" style="width: 130px">Start <p-sortIcon field="startDate" /></th>
-      <th style="width: 130px">End</th>
-      <th style="width: 90px">Tasks</th>
-      <th style="width: 170px">Last change</th>
-      <th style="width: 110px"></th>
-    </tr>
-  </ng-template>
+    <tbody>
+      <tr *ngIf="loading()">
+        <td colspan="8" class="empty"><div class="spinner"></div>Loading...</td>
+      </tr>
 
-  <ng-template pTemplate="body" let-project>
-    <tr>
-      <td>
-        <strong>{{ project.name }}</strong>
-        <div class="muted">{{ project.description }}</div>
-      </td>
-      <td><p-tag [value]="project.status" [severity]="severity(project.status)" /></td>
-      <td>{{ project.ownerName }}</td>
-      <td>{{ project.startDate | date: 'dd MMM yyyy' }}</td>
-      <td>{{ project.endDate ? (project.endDate | date: 'dd MMM yyyy') : '—' }}</td>
-      <td>{{ project.taskCount }}</td>
-      <td class="muted">
-        {{ project.updatedBy ?? project.createdBy }}<br />
-        {{ (project.updatedAt ?? project.createdAt) | date: 'dd MMM yyyy HH:mm' }}
-      </td>
-      <td>
-        <div class="row-actions" *ngIf="auth.isAdmin()">
-          <p-button icon="pi pi-pencil" [text]="true" severity="secondary" (onClick)="openEdit(project)" ariaLabel="Edit" />
-          <p-button icon="pi pi-trash" [text]="true" severity="danger" (onClick)="remove(project)" ariaLabel="Delete" />
-        </div>
-      </td>
-    </tr>
-  </ng-template>
+      <tr *ngFor="let project of result()?.items" [hidden]="loading()">
+        <td>
+          <strong>{{ project.name }}</strong>
+          <div class="muted">{{ project.description }}</div>
+        </td>
+        <td><span class="badge" [class]="'badge ' + badge(project.status)">{{ project.status }}</span></td>
+        <td>{{ project.ownerName }}</td>
+        <td>{{ project.startDate | date: 'dd MMM yyyy' }}</td>
+        <td>{{ project.endDate ? (project.endDate | date: 'dd MMM yyyy') : '—' }}</td>
+        <td>{{ project.taskCount }}</td>
+        <td class="muted">
+          {{ project.updatedBy ?? project.createdBy }}<br />
+          {{ (project.updatedAt ?? project.createdAt) | date: 'dd MMM yyyy HH:mm' }}
+        </td>
+        <td *ngIf="auth.isAdmin()">
+          <div class="row-actions">
+            <button type="button" class="btn-link" (click)="openEdit(project)">Edit</button>
+            <button type="button" class="btn-link danger" (click)="remove(project)">Delete</button>
+          </div>
+        </td>
+      </tr>
 
-  <ng-template pTemplate="emptymessage">
-    <tr><td colspan="8" class="empty">No projects matched your search.</td></tr>
-  </ng-template>
-</p-table>
+      <tr *ngIf="!loading() && result() && result()!.items.length === 0">
+        <td colspan="8" class="empty">No projects matched your search.</td>
+      </tr>
+    </tbody>
+  </table>
 
-<p-dialog
-  [header]="editingId() ? 'Edit project' : 'New project'"
-  [visible]="dialogVisible()"
-  (visibleChange)="dialogVisible.set($event)"
-  [modal]="true"
-  [style]="{ width: '560px' }"
-  [draggable]="false">
+  <app-paginator [page]="result()" label="projects"
+                 (pageChange)="goToPage($event)" (sizeChange)="changeSize($event)" />
+</div>
 
+<app-modal [open]="modalOpen()" [title]="editingId() ? 'Edit project' : 'New project'"
+           (close)="modalOpen.set(false)">
   <form [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="field">
       <label for="name">Name</label>
-      <input id="name" pInputText formControlName="name" />
-      <small class="p-error" *ngIf="invalid('name')">Name is required and must be at least 3 characters.</small>
+      <input id="name" type="text" formControlName="name" />
+      <small class="error" *ngIf="invalid('name')">Name is required and must be at least 3 characters.</small>
     </div>
 
     <div class="field">
       <label for="description">Description</label>
-      <textarea id="description" pInputTextarea formControlName="description" rows="3"></textarea>
+      <textarea id="description" rows="3" formControlName="description"></textarea>
     </div>
 
     <div class="form-grid">
       <div class="field">
         <label for="status">Status</label>
-        <p-dropdown inputId="status" [options]="statuses" formControlName="status" appendTo="body" />
+        <select id="status" formControlName="status">
+          <option *ngFor="let status of statuses" [value]="status">{{ status }}</option>
+        </select>
       </div>
 
       <div class="field">
         <label for="ownerId">Owner</label>
-        <p-dropdown
-          inputId="ownerId"
-          [options]="owners()"
-          optionLabel="fullName"
-          optionValue="id"
-          formControlName="ownerId"
-          placeholder="Select an owner"
-          appendTo="body" />
-        <small class="p-error" *ngIf="invalid('ownerId')">An owner is required.</small>
+        <select id="ownerId" formControlName="ownerId">
+          <option [ngValue]="null" disabled>Select an owner</option>
+          <option *ngFor="let owner of owners()" [ngValue]="owner.id">{{ owner.fullName }}</option>
+        </select>
+        <small class="error" *ngIf="invalid('ownerId')">An owner is required.</small>
       </div>
 
       <div class="field">
         <label for="startDate">Start date</label>
-        <p-calendar inputId="startDate" formControlName="startDate" dateFormat="dd M yy" appendTo="body" />
-        <small class="p-error" *ngIf="invalid('startDate')">A start date is required.</small>
+        <input id="startDate" type="date" formControlName="startDate" />
+        <small class="error" *ngIf="invalid('startDate')">A start date is required.</small>
       </div>
 
       <div class="field">
         <label for="endDate">End date</label>
-        <p-calendar inputId="endDate" formControlName="endDate" dateFormat="dd M yy" [showClear]="true" appendTo="body" />
+        <input id="endDate" type="date" formControlName="endDate" />
       </div>
     </div>
 
-    <small class="p-error" *ngIf="form.hasError('dateRange') && form.touched">
+    <small class="error" *ngIf="form.hasError('dateRange') && form.touched">
       The end date cannot be before the start date.
     </small>
 
     <div class="dialog-actions">
-      <p-button type="button" label="Cancel" severity="secondary" [text]="true" (onClick)="dialogVisible.set(false)" />
-      <p-button type="submit" label="Save" icon="pi pi-check" [loading]="saving()" />
+      <button type="button" class="btn btn-secondary" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save' }}</button>
     </div>
   </form>
-</p-dialog>
+</app-modal>

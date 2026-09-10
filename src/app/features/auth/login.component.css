@@ -8,62 +8,61 @@
 
 .login-card {
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 14px;
+  max-width: 380px;
+  background: var(--surface);
+  border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 20px 45px rgba(15, 23, 42, 0.28);
 }
 
-.login-brand {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-  margin-bottom: 1.5rem;
-}
-
-.login-brand i {
-  font-size: 1.9rem;
-  color: var(--wp-accent);
-}
-
-.login-brand h1 {
-  margin: 0;
+.login-card h1 {
   font-size: 1.3rem;
-}
-
-.login-brand p {
   margin: 0;
-  font-size: 0.82rem;
-  color: var(--wp-muted);
 }
 
-:host ::ng-deep .w-full,
-:host ::ng-deep .w-full input {
+.tagline {
+  margin: 0.15rem 0 1.5rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.full {
   width: 100%;
+  justify-content: center;
+}
+
+.form-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
 }
 
 .demo {
   margin-top: 1.5rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--wp-border);
+  border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.8rem;
-  color: var(--wp-muted);
+  color: var(--muted);
 }
 
 .demo button {
-  border: 1px solid var(--wp-border);
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--surface);
   border-radius: 999px;
   padding: 0.2rem 0.7rem;
   cursor: pointer;
   font-size: 0.78rem;
+  font-family: inherit;
 }
 
 .demo button:hover {
-  border-color: var(--wp-accent);
-  color: var(--wp-accent);
+  border-color: var(--accent);
+  color: var(--accent);
 }

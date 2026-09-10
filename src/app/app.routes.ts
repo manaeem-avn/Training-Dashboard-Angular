@@ -41,14 +41,14 @@ export const routes: Routes = [
       },
       {
         path: 'forbidden',
-        loadComponent: () => import('./features/shared/message-page.component').then((m) => m.ForbiddenComponent),
+        loadComponent: () => import('./shared/message-page.component').then((m) => m.ForbiddenComponent),
         title: 'Not allowed'
       }
     ]
   },
   {
     path: '**',
-    loadComponent: () => import('./features/shared/message-page.component').then((m) => m.NotFoundComponent),
+    loadComponent: () => import('./shared/message-page.component').then((m) => m.NotFoundComponent),
     title: 'Page not found'
   }
 ];

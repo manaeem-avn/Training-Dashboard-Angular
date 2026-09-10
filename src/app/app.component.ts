@@ -1,15 +1,13 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
+import { ToastComponent } from './shared/toast.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, ToastModule, ConfirmDialogModule],
+  imports: [RouterOutlet, ToastComponent],
   template: `
-    <p-toast position="top-right" />
-    <p-confirmDialog />
+    <app-toasts />
     <router-outlet />
   `
 })

@@ -2,110 +2,96 @@
 <p class="page-subtitle">Administrators can add people to the portal and set their role.</p>
 
 <div class="toolbar">
-  <span class="p-input-icon-left">
-    <i class="pi pi-search"></i>
-    <input pInputText type="text" placeholder="Search name or email" (input)="onSearch($any($event.target).value)" />
-  </span>
+  <input type="search" placeholder="Search name or email"
+         (input)="onSearch($any($event.target).value)" />
 
   <span class="spacer"></span>
 
-  <p-button label="New user" icon="pi pi-user-plus" (onClick)="openCreate()" />
+  <button type="button" class="btn" (click)="openCreate()">New user</button>
 </div>
 
-<p-table
-  [value]="rows()"
-  [lazy]="true"
-  (onLazyLoad)="onLazyLoad($event)"
-  [paginator]="true"
-  [rows]="10"
-  [rowsPerPageOptions]="[5, 10, 25]"
-  [totalRecords]="total()"
-  [loading]="loading()"
-  dataKey="id"
-  styleClass="p-datatable-sm p-datatable-gridlines"
-  currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
-  [showCurrentPageReport]="true">
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th class="sortable" (click)="sort('fullName')">Name{{ sortIcon('fullName') }}</th>
+        <th class="sortable" (click)="sort('email')">Email{{ sortIcon('email') }}</th>
+        <th class="sortable" (click)="sort('role')">Role{{ sortIcon('role') }}</th>
+        <th>Status</th>
+        <th>Created</th>
+        <th></th>
+      </tr>
+    </thead>
 
-  <ng-template pTemplate="header">
-    <tr>
-      <th pSortableColumn="fullName" style="min-width: 180px">Name <p-sortIcon field="fullName" /></th>
-      <th pSortableColumn="email" style="min-width: 200px">Email <p-sortIcon field="email" /></th>
-      <th pSortableColumn="role" style="width: 110px">Role <p-sortIcon field="role" /></th>
-      <th style="width: 110px">Status</th>
-      <th style="width: 140px">Created</th>
-      <th style="width: 110px"></th>
-    </tr>
-  </ng-template>
+    <tbody>
+      <tr *ngIf="loading()">
+        <td colspan="6" class="empty"><div class="spinner"></div>Loading...</td>
+      </tr>
 
-  <ng-template pTemplate="body" let-user>
-    <tr>
-      <td><strong>{{ user.fullName }}</strong></td>
-      <td>{{ user.email }}</td>
-      <td><p-tag [value]="user.role" [severity]="user.role === 'Admin' ? 'danger' : 'info'" /></td>
-      <td><p-tag [value]="user.isActive ? 'Active' : 'Disabled'" [severity]="user.isActive ? 'success' : 'secondary'" /></td>
-      <td>{{ user.createdAt | date: 'dd MMM yyyy' }}</td>
-      <td>
-        <div class="row-actions">
-          <p-button icon="pi pi-pencil" [text]="true" severity="secondary" (onClick)="openEdit(user)" ariaLabel="Edit" />
-          <p-button icon="pi pi-trash" [text]="true" severity="danger" (onClick)="remove(user)" ariaLabel="Delete" />
-        </div>
-      </td>
-    </tr>
-  </ng-template>
+      <tr *ngFor="let user of result()?.items" [hidden]="loading()">
+        <td><strong>{{ user.fullName }}</strong></td>
+        <td>{{ user.email }}</td>
+        <td><span class="badge" [class.danger]="user.role === 'Admin'" [class.info]="user.role !== 'Admin'">{{ user.role }}</span></td>
+        <td><span class="badge" [class.success]="user.isActive" [class.neutral]="!user.isActive">{{ user.isActive ? 'Active' : 'Disabled' }}</span></td>
+        <td>{{ user.createdAt | date: 'dd MMM yyyy' }}</td>
+        <td>
+          <div class="row-actions">
+            <button type="button" class="btn-link" (click)="openEdit(user)">Edit</button>
+            <button type="button" class="btn-link danger" (click)="remove(user)">Delete</button>
+          </div>
+        </td>
+      </tr>
 
-  <ng-template pTemplate="emptymessage">
-    <tr><td colspan="6" class="empty">No users matched your search.</td></tr>
-  </ng-template>
-</p-table>
+      <tr *ngIf="!loading() && result() && result()!.items.length === 0">
+        <td colspan="6" class="empty">No users matched your search.</td>
+      </tr>
+    </tbody>
+  </table>
 
-<p-dialog
-  [header]="editingId() ? 'Edit user' : 'New user'"
-  [visible]="dialogVisible()"
-  (visibleChange)="dialogVisible.set($event)"
-  [modal]="true"
-  [style]="{ width: '520px' }"
-  [draggable]="false">
+  <app-paginator [page]="result()" label="users"
+                 (pageChange)="goToPage($event)" (sizeChange)="changeSize($event)" />
+</div>
 
+<app-modal [open]="modalOpen()" [title]="editingId() ? 'Edit user' : 'New user'"
+           (close)="modalOpen.set(false)">
   <form [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="field">
       <label for="fullName">Full name</label>
-      <input id="fullName" pInputText formControlName="fullName" />
-      <small class="p-error" *ngIf="invalid('fullName')">A name of at least 3 characters is required.</small>
+      <input id="fullName" type="text" formControlName="fullName" />
+      <small class="error" *ngIf="invalid('fullName')">A name of at least 3 characters is required.</small>
     </div>
 
     <div class="field">
       <label for="userEmail">Email</label>
-      <input id="userEmail" pInputText type="email" formControlName="email" />
-      <small class="p-error" *ngIf="invalid('email')">Enter a valid email address.</small>
+      <input id="userEmail" type="email" formControlName="email" />
+      <small class="error" *ngIf="invalid('email')">Enter a valid email address.</small>
     </div>
 
     <div class="form-grid">
       <div class="field">
         <label for="userRole">Role</label>
-        <p-dropdown inputId="userRole" [options]="roles" formControlName="role" appendTo="body" />
+        <select id="userRole" formControlName="role">
+          <option *ngFor="let role of roles" [value]="role">{{ role }}</option>
+        </select>
       </div>
 
-      <div class="field">
+      <div class="field inline">
+        <input id="userActive" type="checkbox" formControlName="isActive" />
         <label for="userActive">Active</label>
-        <p-inputSwitch inputId="userActive" formControlName="isActive" />
       </div>
     </div>
 
     <div class="field">
-      <label for="userPassword">{{ editingId() ? 'New password (leave blank to keep the current one)' : 'Password' }}</label>
-      <p-password
-        inputId="userPassword"
-        formControlName="password"
-        [feedback]="false"
-        [toggleMask]="true"
-        styleClass="w-full"
-        inputStyleClass="w-full" />
-      <small class="p-error" *ngIf="invalid('password')">The password must be at least 6 characters.</small>
+      <label for="userPassword">
+        {{ editingId() ? 'New password (leave blank to keep the current one)' : 'Password' }}
+      </label>
+      <input id="userPassword" type="password" formControlName="password" autocomplete="new-password" />
+      <small class="error" *ngIf="invalid('password')">The password must be at least 6 characters.</small>
     </div>
 
     <div class="dialog-actions">
-      <p-button type="button" label="Cancel" severity="secondary" [text]="true" (onClick)="dialogVisible.set(false)" />
-      <p-button type="submit" label="Save" icon="pi pi-check" [loading]="saving()" />
+      <button type="button" class="btn btn-secondary" (click)="modalOpen.set(false)">Cancel</button>
+      <button type="submit" class="btn" [disabled]="saving()">{{ saving() ? 'Saving...' : 'Save' }}</button>
     </div>
   </form>
-</p-dialog>
+</app-modal>

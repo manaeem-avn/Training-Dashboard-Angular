@@ -1,16 +1,16 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { MessageService } from 'primeng/api';
 import { catchError, throwError } from 'rxjs';
 import { ApiError } from '../models/api.models';
+import { ToastService } from '../../shared/toast.service';
 
 export const errorInterceptor: HttpInterceptorFn = (request, next) => {
-  const messages = inject(MessageService);
+  const toasts = inject(ToastService);
 
   return next(request).pipe(
     catchError((error: HttpErrorResponse) => {
       if (error.status !== 401) {
-        messages.add({ severity: 'error', summary: title(error.status), detail: describe(error), life: 6000 });
+        toasts.error(title(error.status), describe(error));
       }
       return throwError(() => error);
     })

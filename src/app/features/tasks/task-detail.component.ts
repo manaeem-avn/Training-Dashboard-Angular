@@ -2,19 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, Input, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
-import { ButtonModule } from 'primeng/button';
-import { InputTextareaModule } from 'primeng/inputtextarea';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
-import { TagModule } from 'primeng/tag';
 import { Attachment, Comment, WorkTask } from '../../core/models/task.models';
 import { AuthService } from '../../core/services/auth.service';
 import { TaskService } from '../../core/services/task.service';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, ButtonModule, InputTextareaModule, TagModule, ProgressSpinnerModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './task-detail.component.html',
   styleUrl: './task-detail.component.css'
 })
@@ -23,8 +19,7 @@ export class TaskDetailComponent implements OnInit {
 
   private service = inject(TaskService);
   private fb = inject(FormBuilder);
-  private messages = inject(MessageService);
-  private confirm = inject(ConfirmationService);
+  private toasts = inject(ToastService);
   auth = inject(AuthService);
 
   loading = signal(true);
@@ -81,6 +76,7 @@ export class TaskDetailComponent implements OnInit {
   }
 
   deleteComment(comment: Comment): void {
+    if (!confirm('Delete this comment?')) return;
     this.service.deleteComment(this.taskId, comment.id).subscribe(() => this.reloadComments());
   }
 
@@ -98,7 +94,7 @@ export class TaskDetailComponent implements OnInit {
       next: (attachment) => {
         this.uploading.set(false);
         input.value = '';
-        this.messages.add({ severity: 'success', summary: 'File uploaded', detail: attachment.fileName });
+        this.toasts.success('File uploaded', attachment.fileName);
         this.reloadAttachments();
       },
       error: () => {
@@ -120,30 +116,12 @@ export class TaskDetailComponent implements OnInit {
   }
 
   deleteAttachment(attachment: Attachment): void {
-    this.confirm.confirm({
-      header: 'Delete attachment',
-      message: `Delete "${attachment.fileName}"?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.service.deleteAttachment(attachment.id).subscribe(() => {
-          this.messages.add({ severity: 'success', summary: 'Attachment deleted', detail: attachment.fileName });
-          this.reloadAttachments();
-        });
-      }
+    if (!confirm(`Delete "${attachment.fileName}"?`)) return;
+
+    this.service.deleteAttachment(attachment.id).subscribe(() => {
+      this.toasts.success('Attachment deleted', attachment.fileName);
+      this.reloadAttachments();
     });
-  }
-
-  statusSeverity(status: string): 'success' | 'info' | 'secondary' {
-    if (status === 'Done') return 'success';
-    if (status === 'InProgress') return 'info';
-    return 'secondary';
-  }
-
-  prioritySeverity(priority: string): 'danger' | 'warning' | 'success' {
-    if (priority === 'High') return 'danger';
-    if (priority === 'Medium') return 'warning';
-    return 'success';
   }
 
   size(bytes: number): string {
@@ -154,5 +132,17 @@ export class TaskDetailComponent implements OnInit {
 
   initials(name: string): string {
     return name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  statusBadge(status: string): string {
+    if (status === 'Done') return 'success';
+    if (status === 'InProgress') return 'info';
+    return 'neutral';
+  }
+
+  priorityBadge(priority: string): string {
+    if (priority === 'High') return 'danger';
+    if (priority === 'Medium') return 'warning';
+    return 'success';
   }
 }

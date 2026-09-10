@@ -2,16 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ConfirmationService, MessageService } from 'primeng/api';
-import { ButtonModule } from 'primeng/button';
-import { CalendarModule } from 'primeng/calendar';
-import { DialogModule } from 'primeng/dialog';
-import { DropdownModule } from 'primeng/dropdown';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
-import { TableLazyLoadEvent, TableModule } from 'primeng/table';
-import { TagModule } from 'primeng/tag';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { PagedResult } from '../../core/models/api.models';
 import { AppUser } from '../../core/models/auth.models';
 import { Project } from '../../core/models/project.models';
 import { TaskQuery, WorkTask } from '../../core/models/task.models';
@@ -19,15 +11,14 @@ import { AuthService } from '../../core/services/auth.service';
 import { ProjectService } from '../../core/services/project.service';
 import { TaskService } from '../../core/services/task.service';
 import { UserService } from '../../core/services/user.service';
-import { toIsoDate } from '../shared/form-helpers';
+import { ModalComponent } from '../../shared/modal.component';
+import { PaginatorComponent } from '../../shared/paginator.component';
+import { ToastService } from '../../shared/toast.service';
 
 @Component({
   selector: 'app-task-list',
   standalone: true,
-  imports: [
-    CommonModule, ReactiveFormsModule, RouterLink, TableModule, ButtonModule, DialogModule,
-    InputTextModule, InputTextareaModule, DropdownModule, CalendarModule, TagModule
-  ],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, ModalComponent, PaginatorComponent],
   templateUrl: './task-list.component.html'
 })
 export class TaskListComponent implements OnInit, OnDestroy {
@@ -35,33 +26,22 @@ export class TaskListComponent implements OnInit, OnDestroy {
   private projects = inject(ProjectService);
   private users = inject(UserService);
   private fb = inject(FormBuilder);
-  private messages = inject(MessageService);
-  private confirm = inject(ConfirmationService);
+  private toasts = inject(ToastService);
   auth = inject(AuthService);
 
   private destroy = new Subject<void>();
   private searchChanged = new Subject<string>();
 
-  rows = signal<WorkTask[]>([]);
-  total = signal(0);
+  result = signal<PagedResult<WorkTask> | null>(null);
   loading = signal(false);
   saving = signal(false);
-  dialogVisible = signal(false);
+  modalOpen = signal(false);
   editingId = signal<number | null>(null);
   projectOptions = signal<Project[]>([]);
   userOptions = signal<AppUser[]>([]);
 
-  statuses = [
-    { label: 'To do', value: 'Todo' },
-    { label: 'In progress', value: 'InProgress' },
-    { label: 'Done', value: 'Done' }
-  ];
-
-  priorities = [
-    { label: 'Low', value: 'Low' },
-    { label: 'Medium', value: 'Medium' },
-    { label: 'High', value: 'High' }
-  ];
+  statuses = ['Todo', 'InProgress', 'Done'];
+  priorities = ['Low', 'Medium', 'High'];
 
   query: TaskQuery = { page: 1, pageSize: 10, sortBy: 'id', desc: false, search: '' };
 
@@ -70,19 +50,21 @@ export class TaskListComponent implements OnInit, OnDestroy {
     description: ['', [Validators.maxLength(1000)]],
     status: ['Todo', [Validators.required]],
     priority: ['Medium', [Validators.required]],
-    dueDate: [null as Date | null],
+    dueDate: [''],
     projectId: [null as number | null, [Validators.required]],
     assigneeId: [null as number | null]
   });
 
   ngOnInit(): void {
-    this.projects.search({ page: 1, pageSize: 50 }).subscribe((result) => this.projectOptions.set(result.items));
+    this.projects.search({ page: 1, pageSize: 50 }).subscribe((r) => this.projectOptions.set(r.items));
     this.users.lookup().subscribe((list) => this.userOptions.set(list));
 
     this.searchChanged.pipe(debounceTime(350), takeUntil(this.destroy)).subscribe((term) => {
       this.query = { ...this.query, search: term, page: 1 };
       this.load();
     });
+
+    this.load();
   }
 
   ngOnDestroy(): void {
@@ -90,24 +72,34 @@ export class TaskListComponent implements OnInit, OnDestroy {
     this.destroy.complete();
   }
 
-  onLazyLoad(event: TableLazyLoadEvent): void {
-    const size = event.rows ?? 10;
-    this.query = {
-      ...this.query,
-      page: Math.floor((event.first ?? 0) / size) + 1,
-      pageSize: size,
-      sortBy: (event.sortField as string) ?? 'id',
-      desc: event.sortOrder === -1
-    };
-    this.load();
-  }
-
   onSearch(term: string): void {
     this.searchChanged.next(term);
   }
 
-  filter(key: 'status' | 'priority' | 'projectId' | 'assigneeId', value: unknown): void {
-    this.query = { ...this.query, [key]: value ?? null, page: 1 };
+  filter(key: 'status' | 'priority' | 'projectId', value: string): void {
+    const parsed = key === 'projectId' ? (value ? Number(value) : null) : (value || null);
+    this.query = { ...this.query, [key]: parsed, page: 1 };
+    this.load();
+  }
+
+  sort(column: string): void {
+    const desc = this.query.sortBy === column ? !this.query.desc : false;
+    this.query = { ...this.query, sortBy: column, desc, page: 1 };
+    this.load();
+  }
+
+  sortIcon(column: string): string {
+    if (this.query.sortBy !== column) return '';
+    return this.query.desc ? ' ▼' : ' ▲';
+  }
+
+  goToPage(page: number): void {
+    this.query = { ...this.query, page };
+    this.load();
+  }
+
+  changeSize(pageSize: number): void {
+    this.query = { ...this.query, pageSize, page: 1 };
     this.load();
   }
 
@@ -115,8 +107,7 @@ export class TaskListComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.service.search(this.query).subscribe({
       next: (result) => {
-        this.rows.set(result.items);
-        this.total.set(result.totalItems);
+        this.result.set(result);
         this.loading.set(false);
       },
       error: () => this.loading.set(false)
@@ -127,9 +118,9 @@ export class TaskListComponent implements OnInit, OnDestroy {
     this.editingId.set(null);
     this.form.reset({
       title: '', description: '', status: 'Todo', priority: 'Medium',
-      dueDate: null, projectId: this.query.projectId ?? null, assigneeId: null
+      dueDate: '', projectId: this.query.projectId ?? null, assigneeId: null
     });
-    this.dialogVisible.set(true);
+    this.modalOpen.set(true);
   }
 
   openEdit(task: WorkTask): void {
@@ -139,11 +130,11 @@ export class TaskListComponent implements OnInit, OnDestroy {
       description: task.description,
       status: task.status,
       priority: task.priority,
-      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      dueDate: task.dueDate ? task.dueDate.substring(0, 10) : '',
       projectId: task.projectId,
       assigneeId: task.assigneeId
     });
-    this.dialogVisible.set(true);
+    this.modalOpen.set(true);
   }
 
   invalid(name: string): boolean {
@@ -163,9 +154,9 @@ export class TaskListComponent implements OnInit, OnDestroy {
       description: value.description,
       status: value.status,
       priority: value.priority,
-      dueDate: toIsoDate(value.dueDate),
-      projectId: value.projectId!,
-      assigneeId: value.assigneeId
+      dueDate: value.dueDate || null,
+      projectId: Number(value.projectId),
+      assigneeId: value.assigneeId ? Number(value.assigneeId) : null
     };
 
     this.saving.set(true);
@@ -175,12 +166,8 @@ export class TaskListComponent implements OnInit, OnDestroy {
     request.subscribe({
       next: () => {
         this.saving.set(false);
-        this.dialogVisible.set(false);
-        this.messages.add({
-          severity: 'success',
-          summary: id ? 'Task updated' : 'Task created',
-          detail: payload.title
-        });
+        this.modalOpen.set(false);
+        this.toasts.success(id ? 'Task updated' : 'Task created', payload.title);
         this.load();
       },
       error: () => this.saving.set(false)
@@ -188,27 +175,21 @@ export class TaskListComponent implements OnInit, OnDestroy {
   }
 
   remove(task: WorkTask): void {
-    this.confirm.confirm({
-      header: 'Delete task',
-      message: `Delete "${task.title}"?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.service.delete(task.id).subscribe(() => {
-          this.messages.add({ severity: 'success', summary: 'Task deleted', detail: task.title });
-          this.load();
-        });
-      }
+    if (!confirm(`Delete "${task.title}"?`)) return;
+
+    this.service.delete(task.id).subscribe(() => {
+      this.toasts.success('Task deleted', task.title);
+      this.load();
     });
   }
 
-  statusSeverity(status: string): 'success' | 'info' | 'secondary' {
+  statusBadge(status: string): string {
     if (status === 'Done') return 'success';
     if (status === 'InProgress') return 'info';
-    return 'secondary';
+    return 'neutral';
   }
 
-  prioritySeverity(priority: string): 'danger' | 'warning' | 'success' {
+  priorityBadge(priority: string): string {
     if (priority === 'High') return 'danger';
     if (priority === 'Medium') return 'warning';
     return 'success';
