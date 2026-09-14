@@ -1,0 +1,39 @@
+<div class="shell" [class.menu-open]="menuOpen()">
+  <aside class="sidebar">
+    <div class="brand">Work Portal</div>
+
+    <nav>
+      <a *ngFor="let item of visibleItems"
+         [routerLink]="item.route"
+         routerLinkActive="active"
+         (click)="closeMenu()">
+        {{ item.label }}
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">.NET 8 + Angular 18</div>
+  </aside>
+
+  <div class="backdrop" (click)="closeMenu()"></div>
+
+  <div class="main">
+    <header class="topbar">
+      <button type="button" class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle menu">&#9776;</button>
+
+      <span class="topbar-title">Enterprise Work Management Portal</span>
+
+      <div class="topbar-right">
+        <span class="avatar">{{ initials() }}</span>
+        <span class="who">
+          <strong>{{ auth.user()?.fullName }}</strong>
+          <small>{{ auth.user()?.role }}</small>
+        </span>
+        <button type="button" class="btn btn-secondary" (click)="auth.logout()">Sign out</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

@@ -1,0 +1,159 @@
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.description {
+  margin: 0 0 1rem;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+dl > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+}
+
+.upload {
+  display: block;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 0.9rem;
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.upload input {
+  display: none;
+}
+
+.upload span {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.upload small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.files,
+.comments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.files li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.file-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-meta strong {
+  font-size: 0.86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-meta small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.comment-form {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.comment-form textarea {
+  flex: 1;
+  font-family: inherit;
+  font-size: 0.88rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.comments {
+  margin-top: 1rem;
+}
+
+.comments li {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.avatar {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.comment-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-head {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+}
+
+.comment-head small {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.comment-body p {
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+}

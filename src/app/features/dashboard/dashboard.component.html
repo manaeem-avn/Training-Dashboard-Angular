@@ -1,0 +1,41 @@
+<h2 class="page-title">Dashboard</h2>
+<p class="page-subtitle">A live summary of projects, tasks and workload.</p>
+
+<div class="empty" *ngIf="loading()">
+  <div class="spinner"></div>
+  <p>Loading the summary...</p>
+</div>
+
+<ng-container *ngIf="!loading() && summary() as data">
+  <div class="cards">
+    <div class="card" *ngFor="let card of cards()" [attr.data-tone]="card.tone">
+      <div class="card-value">{{ card.value }}</div>
+      <div class="card-label">{{ card.label }}</div>
+    </div>
+  </div>
+
+  <div class="charts">
+    <section class="panel">
+      <h3>Tasks by status</h3>
+      <app-chart type="doughnut" [labels]="statusLabels" [values]="statusValues" [colors]="statusColours" />
+    </section>
+
+    <section class="panel">
+      <h3>Tasks per project</h3>
+      <app-chart type="bar" [labels]="projectLabels" [values]="projectValues" />
+    </section>
+  </div>
+
+  <section class="panel">
+    <h3>Tasks by priority</h3>
+    <div class="priority-rows">
+      <div class="priority-row" *ngFor="let point of data.tasksByPriority">
+        <span class="priority-label">{{ point.label }}</span>
+        <div class="bar">
+          <span [style.width.%]="data.totalTasks ? (point.value / data.totalTasks) * 100 : 0"></span>
+        </div>
+        <span class="priority-value">{{ point.value }}</span>
+      </div>
+    </div>
+  </section>
+</ng-container>
