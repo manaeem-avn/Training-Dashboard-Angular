@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Attachment, Comment, WorkTask } from '../../core/models/task.models';
 import { AuthService } from '../../core/services/auth.service';
 import { TaskService } from '../../core/services/task.service';
@@ -15,8 +15,7 @@ import { ToastService } from '../../shared/toast.service';
   styleUrl: './task-detail.component.css'
 })
 export class TaskDetailComponent implements OnInit {
-  @Input() id!: string;
-
+  private route = inject(ActivatedRoute);
   private service = inject(TaskService);
   private fb = inject(FormBuilder);
   private toasts = inject(ToastService);
@@ -33,9 +32,7 @@ export class TaskDetailComponent implements OnInit {
     text: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(1000)]]
   });
 
-  private get taskId(): number {
-    return Number(this.id);
-  }
+  private taskId = Number(this.route.snapshot.paramMap.get('id'));
 
   ngOnInit(): void {
     this.service.getById(this.taskId).subscribe({

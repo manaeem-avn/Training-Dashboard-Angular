@@ -25,12 +25,6 @@ export class AuthService {
       .pipe(tap((response) => this.store(response)));
   }
 
-  refresh(): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, {
-      refreshToken: this.refreshToken ?? ''
-    }).pipe(tap((response) => this.store(response)));
-  }
-
   logout(): void {
     const token = this.refreshToken;
     if (token) {
